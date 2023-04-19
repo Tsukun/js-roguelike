@@ -52,14 +52,14 @@ class Enemy {
 let player = new Player();
 Game.prototype.init = function () {
   generateEmptyMap();
-  for (let i = 0; i < Math.round(Math.random() * 5) + 5; i++) {
+  for (let i = 0; i < pickRandomValue(10, 5); i++) {
     genRoom();
   }
 
-  for (let i = 0; i < Math.round(Math.random() * 2) + 3; i++) {
+  for (let i = 0; i < pickRandomValue(5, 3); i++) {
     genHorizLine();
   }
-  for (let i = 0; i < Math.round(Math.random() * 2) + 3; i++) {
+  for (let i = 0; i < pickRandomValue(5, 3); i++) {
     genVertLine();
   }
   for (let i = 0; i < 10; i++) {
@@ -88,12 +88,12 @@ function generateEmptyMap() {
 }
 
 function genRoom() {
-  const maxRoomWidth = Math.round(Math.random() * 5) + 3;
-  const maxRoomHeight = Math.round(Math.random() * 5) + 3;
+  const maxRoomWidth = pickRandomValue(8, 3);
+  const maxRoomHeight = pickRandomValue(8, 3);
 
   if (true) {
-    const start_x = Math.round(Math.random() * (game.map.length - 1));
-    const start_y = Math.round(Math.random() * (game.map[0].length - 1));
+    const start_x = pickRandomValue(game.map.length - 1, 0);
+    const start_y = pickRandomValue(game.map[0].length - 1, 0);
 
     for (let s_x = 0; s_x < maxRoomWidth; s_x++) {
       for (let s_y = 0; s_y < maxRoomHeight; s_y++) {
@@ -110,7 +110,7 @@ function genRoom() {
 }
 
 function genObject(tileType) {
-  let randomPosition = Math.round(Math.random() * (game.floor.length - 1));
+  let randomPosition = pickRandomValue(game.floor.length - 1, 0);
   let objectPosition = game.floor[randomPosition];
   game.floor.splice(randomPosition, 1);
   game.map[objectPosition[0]][objectPosition[1]] = tileType;
@@ -124,8 +124,12 @@ function genObject(tileType) {
     );
   }
 }
+
+function pickRandomValue(max, min) {
+  return Math.round(Math.random() * (max - min)) + min;
+}
 function genVertLine() {
-  const start_y = Math.round(Math.random() * (game.map[0].length - 1));
+  const start_y = pickRandomValue(game.map[0].length - 1, 0);
 
   for (let height = 0; height < game.map[0].length; height++) {
     game.map[start_y][height] = FLOOR_CODE;
@@ -133,7 +137,7 @@ function genVertLine() {
   }
 }
 function genHorizLine() {
-  const start_x = Math.round(Math.random() * (game.map[0].length - 1));
+  const start_x = pickRandomValue(game.map[0].length - 1, 0);
   for (let height = 0; height < game.map.length; height++) {
     game.map[height][start_x] = FLOOR_CODE;
     setFreeFloor(height, start_x);
@@ -221,7 +225,6 @@ function renderHP() {
   }
 }
 function removeObjFromMap(x, y) {
-  // make this a floor coordinate
   game.map[x][y] = FLOOR_CODE;
 }
 function updatePlayerPosition(oldX, oldY, newX, newY) {
@@ -248,16 +251,10 @@ function userWins() {
 }
 
 function enemyDefeated(enemy) {
-  // remove enemy from  2D array
   removeObjFromMap(enemy.coords.x, enemy.coords.y);
-
-  // remove enemy from enemies array
   let e_idx = game.enemies.indexOf(enemy);
-
-  // remove enemy from array
   game.enemies.splice(e_idx, 1);
 
-  // if no enemies, user wins
   if (game.enemies.length == 0) {
     userWins();
   }
@@ -277,6 +274,7 @@ function fightEnemy(enemy) {
   player.hp -= enemy.damage;
   renderHP();
 }
+
 $(document).on("keydown", function (e) {
   var x = player.coords.x;
   var y = player.coords.y;
@@ -310,18 +308,15 @@ $(document).on("keydown", function (e) {
       player.hp = player.hp + HP_RECOVERY;
       if (player.hp > HP_AMOUNT) player.hp = HP_AMOUNT;
     } else if (game.map[x][y] == SWORD_CODE) {
-      player.weapon = WEAPON[pickRandom()];
-      console.log(pickRandom());
+      player.weapon =
+        WEAPON[pickRandomValue(Object.keys(WEAPON).length - 1, 0)];
     }
     updatePlayerPosition(oldX, oldY, x, y);
   }
 });
 
-function pickRandom() {
-  return Math.round(Math.random() * (Object.keys(WEAPON).length - 1));
-}
 function randomEnemyMovement() {
-  const randomEnemy = Math.round(Math.random() * (game.enemies.length - 1));
+  const randomEnemy = pickRandomValue(game.enemies.length - 1, 0);
   const enemy = game.enemies[randomEnemy];
   var x = enemy.coords.x;
   var y = enemy.coords.y;
@@ -329,8 +324,8 @@ function randomEnemyMovement() {
   var oldY = enemy.coords.y;
 
   const sign = [-1, 1];
-  const randomSign = sign[Math.round(Math.random())];
-  const randomDirection = Math.round(Math.random());
+  const randomSign = sign[pickRandomValue(1, 0)];
+  const randomDirection = pickRandomValue(1, 0);
 
   if (randomDirection == 0) {
     let temp = x + randomSign;
