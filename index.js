@@ -276,9 +276,7 @@ function fightEnemy(enemy, code = -1) {
     if (enemy.hp - player.weapon.damage <= 0) {
       enemyDefeated(enemy);
     }
-    console.log("attack");
     enemy.hp -= player.weapon.damage;
-    console.log(enemy.hp);
   } else if (code == ENEMY_CODE) {
     if (player.hp - enemy.damage <= 0) {
       gameOver();
@@ -321,7 +319,6 @@ $(document).on("keyup", function (e) {
         for (let i = -1; i <= 1; i++) {
           for (let j = -1; j <= 1; j++) {
             let enemy = checkNear(x + i, y + j);
-            console.log(enemy);
             if (enemy) {
               fightEnemy(enemy, PLAYER_CODE);
               break;
