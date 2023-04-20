@@ -1,8 +1,13 @@
 const MAX_ROW = 20;
 const MAX_COLUMN = 32;
 const TILE_SIZE = 32;
-const HP_AMOUNT = 100;
+const HP_AMOUNT = 200;
+const ENEMY_HP = 60;
 const HP_RECOVERY = 25;
+
+const ENEMY_COUNT = 10;
+const POTION_COUNT = 10;
+const WEAPON_COUNT = 2;
 
 const WALL_CODE = 0;
 const PLAYER_CODE = 1;
@@ -29,6 +34,7 @@ class Game {
     this.map = [];
     this.enemies = [];
     this.enemiesIntervalId = null;
+    this.enemiesAttackIntervalId = null;
     this.floor = [];
     this.rooms = [];
   }
@@ -43,7 +49,7 @@ class Player {
 }
 class Enemy {
   constructor(coords) {
-    this.hp = 60;
+    this.hp = ENEMY_HP;
     this.damage = 25;
     this.coords = coords;
   }
@@ -62,19 +68,21 @@ Game.prototype.init = function () {
   for (let i = 0; i < pickRandomValue(5, 3); i++) {
     genVertLine();
   }
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < ENEMY_COUNT; i++) {
     genObject(ENEMY_CODE);
   }
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < WEAPON_COUNT; i++) {
     genObject(SWORD_CODE);
   }
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < POTION_COUNT; i++) {
     genObject(POTION_CODE);
   }
   genObject(PLAYER_CODE);
 
-  //const enemiesInterval = setInterval(randomEnemyMovement, 1000);
-  //game.enemiesIntervalId = enemiesInterval;
+  const enemiesInterval = setInterval(randomEnemyMovement, 500);
+  game.enemiesIntervalId = enemiesInterval;
+  const enemiesAttack = setInterval(enemyAttack, 1000);
+  game.enemiesAttackIntervalId = enemiesAttack;
 
   renderMap();
 };
@@ -154,18 +162,20 @@ function setFreeFloor(x, y) {
   }
 }
 
+function resetGame() {
+  clearInterval(game.enemiesIntervalId);
+  clearInterval(game.enemiesAttackIntervalId);
+  game = new Game();
+  player = new Player();
+}
+
 function resetMap() {
   $(".field").empty();
 }
 
-function resetGame() {
-  game = new Game();
-  player = new Player();
-}
 function renderMap() {
   resetMap();
 
-  let tempEnemyIndex = 0;
   for (let x = 0; x < MAX_COLUMN; x++) {
     for (let y = 0; y < MAX_ROW; y++) {
       $(".field").append(
@@ -183,10 +193,9 @@ function renderMap() {
                 })
               )
             : ""
-        } ></div>
+        } >  </div>
         </div>`
       );
-      if (game.map[x][y] == ENEMY_CODE) tempEnemyIndex++;
     }
   }
   renderInventory();
@@ -219,11 +228,12 @@ function renderHP() {
   for (let i = 0; i < game.enemies.length; i++) {
     $(`#enemy_${i}`).append(
       `<div class="health" style="width: ${
-        (game.enemies[i].hp / HP_AMOUNT) * 100
+        (game.enemies[i].hp / ENEMY_HP) * 100
       }%"></div>`
     );
   }
 }
+
 function removeObjFromMap(x, y) {
   game.map[x][y] = FLOOR_CODE;
 }
@@ -241,77 +251,95 @@ function updatePlayerPosition(oldX, oldY, newX, newY) {
 function gameOver() {
   alert("GAME OVER");
   resetGame();
-  game.init();
+  setTimeout(game.init, 10);
+  //game.init();
 }
 
 function userWins() {
   alert("USER WIN");
   resetGame();
-  game.init();
+  setTimeout(game.init, 10);
 }
 
 function enemyDefeated(enemy) {
   removeObjFromMap(enemy.coords.x, enemy.coords.y);
   let e_idx = game.enemies.indexOf(enemy);
   game.enemies.splice(e_idx, 1);
-
+  renderMap();
   if (game.enemies.length == 0) {
     userWins();
   }
 }
 
-function fightEnemy(enemy) {
+function fightEnemy(enemy, code = -1) {
   if (player.hp - enemy.damage <= 0) {
     gameOver();
     return;
   }
   if (enemy.hp - player.weapon.damage <= 0) {
     enemyDefeated(enemy);
-    renderMap();
-  } else {
+  } else if (code == PLAYER_CODE) {
     enemy.hp -= player.weapon.damage;
+  } else if (code == ENEMY_CODE) {
+    player.hp -= enemy.damage;
   }
-  player.hp -= enemy.damage;
   renderHP();
 }
 
-$(document).on("keydown", function (e) {
-  var x = player.coords.x;
-  var y = player.coords.y;
-  var oldX = player.coords.x;
-  var oldY = player.coords.y;
+function checkNear(x, y) {
+  const matching_coords = (enemy) => {
+    return enemy.coords.x == x && enemy.coords.y == y;
+  };
+  let enemy = game.enemies.find(matching_coords);
+  return enemy;
+}
 
-  switch (e.which) {
-    case 37: // left
-      if (x > 0) x--;
-      break;
-    case 38: // up
-      if (y > 0) y--;
-      break;
-    case 39: // right
-      if (x < game.map.length - 1) x++;
-      break;
-    case 40: // down
-      if (y < game.map[0].length - 1) y++;
-      break;
-    default:
-      return; // exit this handler for other keys
-  }
-  if (game.map[x][y] == ENEMY_CODE) {
-    const matching_coords = (enemy) => {
-      return enemy.coords.x == x && enemy.coords.y == y;
-    };
-    let enemy = game.enemies.find(matching_coords);
-    fightEnemy(enemy);
-  } else if (game.map[x][y] != WALL_CODE) {
-    if (game.map[x][y] == POTION_CODE) {
-      player.hp = player.hp + HP_RECOVERY;
-      if (player.hp > HP_AMOUNT) player.hp = HP_AMOUNT;
-    } else if (game.map[x][y] == SWORD_CODE) {
-      player.weapon =
-        WEAPON[pickRandomValue(Object.keys(WEAPON).length - 1, 0)];
+$(document).on("keydown", function (e) {
+  try {
+    var x = player.coords.x;
+    var y = player.coords.y;
+    var oldX = player.coords.x;
+    var oldY = player.coords.y;
+
+    switch (e.which) {
+      case 37: // left
+        if (x > 0) x--;
+        break;
+      case 38: // up
+        if (y > 0) y--;
+        break;
+      case 39: // right
+        if (x < game.map.length - 1) x++;
+        break;
+      case 40: // down
+        if (y < game.map[0].length - 1) y++;
+        break;
+      case 32:
+        for (let i = -1; i <= 1; i++) {
+          for (let j = -1; j <= 1; j++) {
+            let enemy = checkNear(x + i, y + j);
+            if (enemy) fightEnemy(enemy, PLAYER_CODE);
+          }
+        }
+        break;
+      default:
+        return; // exit this handler for other keys
     }
-    updatePlayerPosition(oldX, oldY, x, y);
+    if (game.map[x][y] == ENEMY_CODE) {
+      // let enemy = checkNear(x, y);
+      // fightEnemy(enemy);
+    } else if (game.map[x][y] != WALL_CODE) {
+      if (game.map[x][y] == POTION_CODE) {
+        player.hp = player.hp + HP_RECOVERY;
+        if (player.hp > HP_AMOUNT) player.hp = HP_AMOUNT;
+      } else if (game.map[x][y] == SWORD_CODE) {
+        player.weapon =
+          WEAPON[pickRandomValue(Object.keys(WEAPON).length - 1, 0)];
+      }
+      updatePlayerPosition(oldX, oldY, x, y);
+    }
+  } catch (e) {
+    console.log("Map still not setting up", e);
   }
 });
 
@@ -335,15 +363,23 @@ function randomEnemyMovement() {
     if (temp < game.map[0].length && temp > 0) y = temp;
   }
 
-  if (game.map[x][y] == PLAYER_CODE) {
-    fightEnemy(enemy);
-  } else if (
+  if (
     game.map[x][y] != WALL_CODE &&
     game.map[x][y] != POTION_CODE &&
     game.map[x][y] != SWORD_CODE &&
-    game.map[x][y] != ENEMY_CODE
+    game.map[x][y] != ENEMY_CODE &&
+    game.map[x][y] != PLAYER_CODE
   ) {
     updateEnemyPosition(oldX, oldY, x, y, randomEnemy);
+  }
+}
+
+function enemyAttack() {
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      let enemy = checkNear(player.coords.x + i, player.coords.y + j);
+      if (enemy) fightEnemy(enemy, ENEMY_CODE);
+    }
   }
 }
 
