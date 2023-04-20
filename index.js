@@ -272,15 +272,18 @@ function enemyDefeated(enemy) {
 }
 
 function fightEnemy(enemy, code = -1) {
-  if (player.hp - enemy.damage <= 0) {
-    gameOver();
-    return;
-  }
-  if (enemy.hp - player.weapon.damage <= 0) {
-    enemyDefeated(enemy);
-  } else if (code == PLAYER_CODE) {
+  if (code == PLAYER_CODE) {
+    if (enemy.hp - player.weapon.damage <= 0) {
+      enemyDefeated(enemy);
+    }
+    console.log("attack");
     enemy.hp -= player.weapon.damage;
+    console.log(enemy.hp);
   } else if (code == ENEMY_CODE) {
+    if (player.hp - enemy.damage <= 0) {
+      gameOver();
+      return;
+    }
     player.hp -= enemy.damage;
   }
   renderHP();
@@ -294,7 +297,7 @@ function checkNear(x, y) {
   return enemy;
 }
 
-$(document).on("keydown", function (e) {
+$(document).on("keyup", function (e) {
   try {
     var x = player.coords.x;
     var y = player.coords.y;
@@ -318,17 +321,18 @@ $(document).on("keydown", function (e) {
         for (let i = -1; i <= 1; i++) {
           for (let j = -1; j <= 1; j++) {
             let enemy = checkNear(x + i, y + j);
-            if (enemy) fightEnemy(enemy, PLAYER_CODE);
+            console.log(enemy);
+            if (enemy) {
+              fightEnemy(enemy, PLAYER_CODE);
+              break;
+            }
           }
         }
         break;
       default:
         return; // exit this handler for other keys
     }
-    if (game.map[x][y] == ENEMY_CODE) {
-      // let enemy = checkNear(x, y);
-      // fightEnemy(enemy);
-    } else if (game.map[x][y] != WALL_CODE) {
+    if (game.map[x][y] != WALL_CODE && game.map[x][y] != ENEMY_CODE) {
       if (game.map[x][y] == POTION_CODE) {
         player.hp = player.hp + HP_RECOVERY;
         if (player.hp > HP_AMOUNT) player.hp = HP_AMOUNT;
